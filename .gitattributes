@@ -1,0 +1,6 @@
+# Tousles fichiers texte : LF dans le dépot et sur le PC
+# LF = line feed
+# CR = Carriage Return
+# * = tous
+# text=auto = Pour chaque fichier du projet, Git vérifie si c'est du texte. Si oui, il utilise toujours des fins de ligne LF. Si non, il n'y touche pas.
+* text=auto eol=lf
