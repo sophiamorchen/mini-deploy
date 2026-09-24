@@ -19,6 +19,9 @@ services:
 
   db:
     image: mariadb:11.4
+    # pour avoir accès à un visuel phpmyamdin on peut créer un conteneur éphémère avec l'image de phpmyamdin: 
+    # docker run -d --rm --name pma --network mini-deploy_default -e PMA_HOST=db -p 8080:80 phpmyadmin
+    # -e PMA_HOST=db => --env = crée une variable d'environnement dans le conteneur, au démarrage. l'image phpmyadmin lit PMA_HOST pour savoir à quelle base se connecter.
 
     # Donne les valeurs du .env au conteneur (lues par MARIADB)
     env_file: .env
