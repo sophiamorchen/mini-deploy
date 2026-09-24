@@ -1,0 +1,55 @@
+services: 
+# service phph + apache 
+  web: 
+  # Construit l'image à partir du dossier web/ (qui contient le Dockerfile)
+    build:
+      context: ./web
+    
+    # Port 80 de mon PC -> port 80 du conteneur (Apache)
+    ports:
+      - "80:80"
+
+    # Donne les valeurs de .env au conteneur (lues par getenv())
+    env_file: .env
+
+    # Démarre seulement quand le healthcheck du db a réussi
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11.4
+
+    # Donne les valeurs du .env au conteneur (lues par MARIADB)
+    env_file: .env
+    volumes:
+      # c'est ICI que MARIADB range ses données. Espace de stockage geré par docker
+      - db-data:/var/lib/mysql
+      # création d'une fenêtre ouverte sur db/init.sql
+      # seulement une recette de départ, lue une fois.
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+      # Test pour savoir si MARIADB est vraiment prête
+      # script déjà présent dans l'image MARIADB, prêt à l'emploi
+    healthcheck:
+      # Script fourni par l'image : vérifie la connexion et le moteur de stockage
+      # healthcheck rangé dans le /usr/local/bin du conteneur db
+      # docker compose exec db ls /usr/local/bin
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+
+      # Relance le test toutes les 10 secondes
+      interval: 10s
+
+      # Un test qui dure plus de 5s compte comme un échec
+      timeout: 5s
+
+      # Après 5 écechs de suite, le conteneur est déclaré "unhealthy"
+      retries: 5
+    
+    # Pas de ports : MARIADB n'est joignable que par web, pas depuis internet
+
+# Déclare le volume nommé utilisé plus haut
+volumes:
+  db-data:
+
+    
