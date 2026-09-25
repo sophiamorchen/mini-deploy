@@ -29,12 +29,17 @@ jobs:
       VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       # Dossier du projet sur le serveur, lu dans les variables "vps"
       APP_PATH: ${{ vars.APP_PATH }}
+      # Clés d'hôte du serveur, pour vérifier son identité
+      VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+
     # La liste des étapes, exécutées dans l'ordre
     steps:
       # Étape 1 : copier le code du dépôt dans le runner
       - name: Récupérer le code
         # Action officielle de Github, version majeure 6
         uses: actions/checkout@v6
+
       # Étape 2 : installer sshpass sur le runner 
       # - name: Installer sshpass
       #   # Rafraîchit le catalogue, puis installe sshpass sans poser de question
@@ -45,6 +50,9 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
       # Étape 3 : copier le code du runner vers le serveur
       - name: Copier le code sur le serveur
         run: |
@@ -52,8 +60,9 @@ jobs:
             --exclude '.git' \
             --exclude '.github' \
             --exclude '.env' \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh -i ~/.ssh/deploy_key" \
             ./ "$VPS_USER@$VPS_HOST:$APP_PATH/"
+
       # Étape 3 : copier le code du runner vers le serveur
       # - name: Copier le code sur le serveur
       #   # "|" : plusieurs lignes de commande ; "\" : la commande continue à la ligne suivante"
@@ -65,9 +74,10 @@ jobs:
       #       -e "sshpass -e ssh -o StrictHostKeyChecking=no" \
       #       ./ "$VPS_USER@$VPS_HOST:$APP_PATH/"
       # Étape 4 : se connecter au serveur et relancer les conteneurs
+
       - name: Relancer les conteneurs sur le serveur
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" << EOF
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" << EOF
             cd $APP_PATH
             docker compose up -d --build
           EOF
