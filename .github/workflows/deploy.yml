@@ -1,0 +1,56 @@
+# Nom affiché dans l'onglet "Actions" de Github
+name: Déploiement (version A - mot de passe)
+
+# QUAND le workflow se lance
+on:
+  # à chaque envoie de code (git push)...     
+  push:
+    # ... mais seulement sur la branche main
+    branches: [main]
+    
+    # CE QU'IL FAIT : une liste de "jobs" (groupe de tâches)
+    # Job : un groupe de tâches exécutées sur un même runner, les unes après les autres
+jobs:
+    # Nom de notre unique job (choisi librement)
+  deploy:
+    # Le runner : un Ubuntu temporaire prêté par Github
+    runs-on: ubuntu-latest
+    # Donne accès aux secrets et variables de l'environnement "vps"
+    environment: vps
+    # Variables données au runner pour tout le job
+    env:
+      # Adresse du serveur, lue dans les secrets de "vps"
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      # Compte sur le serveur
+      VPS_USER: ${{ secrets.VPS_USER }}
+      # Mot de passe : nom imposé "SSHPASS" 
+      SSHPASS: ${{ secrets.VPS_PASSWORD }}
+      # Dossier du projet sur le serveur, lu dans les variables "vps"
+      APP_PATH: ${{ vars.APP_PATH }}
+    # La liste des étapes, exécutées dans l'ordre
+    steps:
+      # Étape 1 : copier le code du dépôt dans le runner
+      - name: Récupérer le code
+        # Action officielle de Github, version majeure 6
+        uses: actions/checkout@v6
+      # Étape 2 : installer sshpass sur le runner 
+      - name: Installer sshpass
+        # Rafraîchit le tacalogue, puis installe sshpass sans poser de quesrtion
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+      # Étape 3 : copier le code du runner vers le serveur
+      - name: Copier le code sur le serveur
+        # "|" : plusieurs lignes de commande ; "\" : la commande continue à la ligne suivante"
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            -e "sshpass -e ssh -o StrictHostKeyChecking=no" \
+            ./ "$VPS_USER@$VPS_HOST:$APP_PATH/"
+      # Étape 4 : se connecter au serveur et relancer les conteneurs
+      - name: Relancer les conteneurs sur le serveur
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" << EOF 
+            cd $APP_PATH
+            docker compose up -d --build
+          EOF
