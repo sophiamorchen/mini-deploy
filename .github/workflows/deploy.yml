@@ -1,5 +1,5 @@
 # Nom affiché dans l'onglet "Actions" de Github
-# name: Déploiement (version A - mot de passe)
+
 name: Déploiement (version B - SSH)
 
 # QUAND le workflow se lance
@@ -24,8 +24,7 @@ jobs:
       VPS_HOST: ${{ secrets.VPS_HOST }}
       # Compte sur le serveur
       VPS_USER: ${{ secrets.VPS_USER }}
-      # Mot de passe : nom imposé "SSHPASS" 
-      #SSHPASS: secrets.VPS_PASSWORD 
+      # Mot de passe : 
       VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       # Dossier du projet sur le serveur, lu dans les variables "vps"
       APP_PATH: ${{ vars.APP_PATH }}
@@ -40,10 +39,6 @@ jobs:
         # Action officielle de Github, version majeure 6
         uses: actions/checkout@v6
 
-      # Étape 2 : installer sshpass sur le runner 
-      # - name: Installer sshpass
-      #   # Rafraîchit le catalogue, puis installe sshpass sans poser de question
-      #   run: sudo apt-get update && sudo apt-get install -y sshpass
       # Étape 2 : écrire la clé privée dans un fichier du runner - seul le proprio peut lire la clé
       - name: Préparer la clé SSH
         run: |
@@ -63,18 +58,7 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key" \
             ./ "$VPS_USER@$VPS_HOST:$APP_PATH/"
 
-      # Étape 3 : copier le code du runner vers le serveur
-      # - name: Copier le code sur le serveur
-      #   # "|" : plusieurs lignes de commande ; "\" : la commande continue à la ligne suivante"
-      #   run: |
-      #     rsync -az --delete \
-      #       --exclude '.git' \
-      #       --exclude '.github' \
-      #       --exclude '.env' \
-      #       -e "sshpass -e ssh -o StrictHostKeyChecking=no" \
-      #       ./ "$VPS_USER@$VPS_HOST:$APP_PATH/"
       # Étape 4 : se connecter au serveur et relancer les conteneurs
-
       - name: Relancer les conteneurs sur le serveur
         run: |
           ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" << EOF
@@ -82,10 +66,3 @@ jobs:
             docker compose up -d --build
           EOF
 
-      # Étape 4 : se connecter au serveur et relancer les conteneurs
-      # - name: Relancer les conteneurs sur le serveur
-      #   run: |
-      #     sshpass -e ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" << EOF 
-      #       cd $APP_PATH
-      #       docker compose up -d --build
-      #     EOF
